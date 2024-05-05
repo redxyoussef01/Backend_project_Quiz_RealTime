@@ -14,9 +14,6 @@ export class Quiz {
     makerId: number
 
     @Column()
-    userId: number
-
-    @Column()
     description: string
 
     @Column()
