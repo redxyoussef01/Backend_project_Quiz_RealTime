@@ -22,7 +22,6 @@ app.post('/createQz', async(req: Request, res: Response)=>{
     const newQz = new Quiz();
     newQz.title = req.body.title;
     newQz.makerId = req.body.makerId;
-    newQz.userId = req.body.userId;
     newQz.description = req.body.description;
     newQz.temps = req.body.temps;
     newQz.note = req.body.note;
@@ -143,6 +142,74 @@ app.get('/listQuestion', async (req, res) => {
         res.status(200).json(qsts);
     } catch (error) {
         console.error('Error listing questions:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// CRUD Note
+
+app.post('/createNote', async(req: Request, res: Response)=>{
+    try{
+        const { quizId, userId } = req.body;
+        const NoteRepo = AppDataSource.getRepository(Note);
+        const newNt = new Note();
+        newNt.note = req.body.note;
+        const qzRepo = AppDataSource.getRepository(Quiz);
+        const myquiz = await qzRepo.findOne({where: isNaN(quizId) ? { id: null } : { id: quizId }});
+        if (!myquiz) {
+            return res.status(404).json({ error: 'Quiz not found' });
+        }
+        newNt.quiz = myquiz;
+        const UserRepo = AppDataSource.getRepository(User);
+        const myuser = await UserRepo.findOne({where: isNaN(userId) ? { id: null } : { id: userId }});
+        if (!myuser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        newNt.user = myuser;
+        await NoteRepo.save(newNt);
+        res.status(202).json({message: "Note created successfuly"});
+    }catch (error) {
+        console.error('Error creating Note:', error);
+        res.status(500).json({error: "Internal server error"});
+}
+});
+app.put('/updateNote/:id', async (req: Request, res: Response) => {
+    try {
+        const noteId = parseInt(req.params.id);
+        const NtRepo = AppDataSource.getRepository(Note);
+        const mynote = await NtRepo.findOne({where: isNaN(noteId) ? { id: null } : { id: noteId } })
+        mynote.note = req.body.note;
+        mynote.user = req.body.user;
+        mynote.quiz = req.body.quiz;
+        await NtRepo.save(mynote);
+        res.status(200).json({ message: 'Note updated successfully', mynote });
+    } catch (error) {
+        console.error('Error updating Note:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+app.delete('/deleteNote/:id', async (req: Request, res: Response) => {
+    try {
+        const NtId = parseInt(req.params.id);
+        const NtRepo = AppDataSource.getRepository(Note);
+        const mynote = await NtRepo.findOne({where: isNaN(NtId) ? { id: null } : { id: NtId } })
+        if(!mynote){
+            return res.status(404).json({ error: 'Note not found' });
+        }
+        await NtRepo.remove(mynote)
+        res.status(200).json({ message: 'Note deleted successfully', mynote });
+    } catch (error) {
+        console.error('Error deleting Note:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+app.get('/listNote', async (req, res) => {
+    try {
+        const NtRepo = AppDataSource.getRepository(Note);
+        const notes = await NtRepo.find();
+        res.status(200).json(notes);
+    } catch (error) {
+        console.error('Error listing notes:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
