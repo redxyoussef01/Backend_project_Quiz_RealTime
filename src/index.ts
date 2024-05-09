@@ -1,6 +1,5 @@
 import { AppDataSource } from "./data-source";
-import { Quiz } from "./entity/Quiz";
-import { Account } from "./entity/Account";
+
 import * as express from "express";
 
 const routes = require("./routes.ts");
