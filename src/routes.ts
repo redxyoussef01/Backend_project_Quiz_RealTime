@@ -11,18 +11,14 @@ module.exports = function (app, AppDataSource) {
   app.post("/createQz", async (req: Request, res: Response) => {
     try {
       const QuizRepo = AppDataSource.getRepository(Quiz);
+
       const newQz = new Quiz();
       newQz.title = req.body.title;
       newQz.makerId = req.body.makerId;
       newQz.description = req.body.description;
       newQz.temps = req.body.temps;
       newQz.note = req.body.note;
-      const questionRepo = AppDataSource.getRepository(Question);
-      newQz.questions = await questionRepo.find({
-        where: { id: In(req.body.questions) },
-      });
       await QuizRepo.save(newQz);
-
       res.status(202).json({ message: "Quiz created successfuly" });
     } catch (error) {
       console.error("Error creating User:", error);

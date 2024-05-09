@@ -46,11 +46,11 @@ var User_1 = require("./entity/User");
 module.exports = function (app, AppDataSource) {
     var _this = this;
     app.post("/createQz", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var QuizRepo, newQz, questionRepo, _a, error_1;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
+        var QuizRepo, newQz, error_1;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
                 case 0:
-                    _b.trys.push([0, 3, , 4]);
+                    _a.trys.push([0, 2, , 3]);
                     QuizRepo = AppDataSource.getRepository(Quiz_1.Quiz);
                     newQz = new Quiz_1.Quiz();
                     newQz.title = req.body.title;
@@ -58,24 +58,17 @@ module.exports = function (app, AppDataSource) {
                     newQz.description = req.body.description;
                     newQz.temps = req.body.temps;
                     newQz.note = req.body.note;
-                    questionRepo = AppDataSource.getRepository(Question_1.Question);
-                    _a = newQz;
-                    return [4 /*yield*/, questionRepo.find({
-                            where: { id: typeorm_1.In(req.body.questions) }
-                        })];
-                case 1:
-                    _a.questions = _b.sent();
                     return [4 /*yield*/, QuizRepo.save(newQz)];
-                case 2:
-                    _b.sent();
+                case 1:
+                    _a.sent();
                     res.status(202).json({ message: "Quiz created successfuly" });
-                    return [3 /*break*/, 4];
-                case 3:
-                    error_1 = _b.sent();
+                    return [3 /*break*/, 3];
+                case 2:
+                    error_1 = _a.sent();
                     console.error("Error creating User:", error_1);
                     res.status(500).json({ error: "Internal server error" });
-                    return [3 /*break*/, 4];
-                case 4: return [2 /*return*/];
+                    return [3 /*break*/, 3];
+                case 3: return [2 /*return*/];
             }
         });
     }); });
