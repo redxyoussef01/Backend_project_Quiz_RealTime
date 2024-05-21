@@ -7,21 +7,47 @@ import { Request, Response } from "express";
 import { In } from "typeorm";
 import { User } from "./entity/User";
 
-module.exports = function (app, AppDataSource) {
-  app.post("/createQz", async (req: Request, res: Response) => {
+module.exports = function (app, AppDataSource, io) {
+  app.post("/createqst", async (req, res) => {
     try {
+      const QstRepo = AppDataSource.getRepository(Question);
       const QuizRepo = AppDataSource.getRepository(Quiz);
 
-      const newQz = new Quiz();
-      newQz.title = req.body.title;
-      newQz.makerId = req.body.makerId;
-      newQz.description = req.body.description;
-      newQz.temps = req.body.temps;
-      newQz.note = req.body.note;
-      await QuizRepo.save(newQz);
-      res.status(202).json({ message: "Quiz created successfuly" });
+      const { title, description, makerId, temps, note, questions } = req.body;
+
+      // Create a new quiz
+      const newQuiz = new Quiz();
+      newQuiz.title = title;
+      newQuiz.description = description;
+      newQuiz.makerId = makerId;
+      newQuiz.temps = temps;
+      newQuiz.note = note;
+
+      // Save the quiz to get its ID
+      const savedQuiz = await QuizRepo.save(newQuiz);
+
+      // Create questions and associate them with the quiz
+      const promises = questions.map(async (questionData) => {
+        const { qst, option1, option2, option3, option4, answeris } =
+          questionData;
+        const newQst = new Question();
+        newQst.qst = qst;
+        newQst.option1 = option1;
+        newQst.option2 = option2;
+        newQst.option3 = option3;
+        newQst.option4 = option4;
+        newQst.answeris = answeris;
+        newQst.quiz = savedQuiz; // Associate the question with the quiz
+        await QstRepo.save(newQst);
+      });
+
+      await Promise.all(promises);
+
+      res
+        .status(201)
+        .json({ message: "Quiz and questions created successfully" });
     } catch (error) {
-      console.error("Error creating User:", error);
+      console.error("Error creating quiz and questions:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -68,7 +94,7 @@ module.exports = function (app, AppDataSource) {
   app.get("/listQuiz", async (req, res) => {
     try {
       const quizRepo = AppDataSource.getRepository(Quiz);
-      const quizzes = await quizRepo.find();
+      const quizzes = await quizRepo.find({ relations: ["questions"] });
       res.status(200).json(quizzes);
     } catch (error) {
       console.error("Error listing quizzes:", error);
@@ -76,6 +102,20 @@ module.exports = function (app, AppDataSource) {
     }
   });
 
+  app.get("/getQuiz/:id", async (req, res) => {
+    try {
+      const quizId = req.params.id;
+      const quizRepo = AppDataSource.getRepository(Quiz);
+      const quiz = await quizRepo.findOne(quizId, { relations: ["questions"] });
+      if (!quiz) {
+        return res.status(404).json({ error: "Quiz not found" });
+      }
+      res.status(200).json(quiz);
+    } catch (error) {
+      console.error("Error getting quiz:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
   //CRUD QUESTION
   app.post("/createqst", async (req: Request, res: Response) => {
     try {
@@ -136,7 +176,7 @@ module.exports = function (app, AppDataSource) {
   app.get("/listQuestion", async (req, res) => {
     try {
       const qstRepo = AppDataSource.getRepository(Question);
-      const qsts = await qstRepo.find();
+      const qsts = await qstRepo.find({ relations: ["quiz"] });
       res.status(200).json(qsts);
     } catch (error) {
       console.error("Error listing questions:", error);
@@ -144,6 +184,20 @@ module.exports = function (app, AppDataSource) {
     }
   });
 
+  app.get("/listQuestion/:quizId", async (req, res) => {
+    try {
+      const quizId = req.params.quizId;
+      const qstRepo = AppDataSource.getRepository(Question);
+      const qsts = await qstRepo.find({
+        where: { quiz: { id: quizId } },
+        relations: ["quiz"],
+      });
+      res.status(200).json(qsts);
+    } catch (error) {
+      console.error("Error listing questions:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
   // CRUD Note
 
   app.post("/createNote", async (req: Request, res: Response) => {
@@ -169,6 +223,8 @@ module.exports = function (app, AppDataSource) {
       }
       newNt.user = myuser;
       await NoteRepo.save(newNt);
+      // Emit a 'noteCreated' event to notify connected clients
+      io.emit("noteCreated", newNt);
       res.status(202).json({ message: "Note created successfuly" });
     } catch (error) {
       console.error("Error creating Note:", error);
@@ -211,10 +267,16 @@ module.exports = function (app, AppDataSource) {
   });
   app.get("/listNote", async (req, res) => {
     try {
+      // Get the repository for the Note entity
       const NtRepo = AppDataSource.getRepository(Note);
-      const notes = await NtRepo.find();
+
+      // Retrieve all notes with their associated quizzes and users
+      const notes = await NtRepo.find({ relations: ["quiz", "user"] });
+
+      // Return the formatted notes
       res.status(200).json(notes);
     } catch (error) {
+      // Handle errors
       console.error("Error listing notes:", error);
       res.status(500).json({ error: "Internal server error" });
     }

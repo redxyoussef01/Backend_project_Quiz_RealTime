@@ -1,20 +1,18 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, Double, OneToOne, JoinColumn } from "typeorm"
-import { Quiz } from "./Quiz"
-import { User } from "./User"
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from "typeorm";
+import { Quiz } from "./Quiz";
+import { User } from "./User";
+
 @Entity()
 export class Note {
+  @PrimaryGeneratedColumn()
+  id: number;
 
-    @PrimaryGeneratedColumn()
-    id: number
+  @Column()
+  note: number;
 
-    @Column()
-    note: string
+  @ManyToOne(() => Quiz, (quiz) => quiz.id)
+  quiz: Quiz;
 
-    @OneToOne(() => Quiz, { onDelete: "CASCADE" })
-    @JoinColumn()
-    quiz: Quiz;
-    
-    @OneToOne(() => User, { onDelete: "CASCADE" })
-    @JoinColumn()
-    user: User;
+  @ManyToOne(() => User, (user) => user.id)
+  user: User;
 }

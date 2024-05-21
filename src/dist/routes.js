@@ -43,32 +43,61 @@ var Question_1 = require("./entity/Question");
 var Note_1 = require("./entity/Note");
 var typeorm_1 = require("typeorm");
 var User_1 = require("./entity/User");
-module.exports = function (app, AppDataSource) {
+module.exports = function (app, AppDataSource, io) {
     var _this = this;
-    app.post("/createQz", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var QuizRepo, newQz, error_1;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
+    app.post("/createqst", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
+        var QstRepo_1, QuizRepo, _a, title, description, makerId, temps, note, questions, newQuiz, savedQuiz_1, promises, error_1;
+        var _this = this;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
                 case 0:
-                    _a.trys.push([0, 2, , 3]);
+                    _b.trys.push([0, 3, , 4]);
+                    QstRepo_1 = AppDataSource.getRepository(Question_1.Question);
                     QuizRepo = AppDataSource.getRepository(Quiz_1.Quiz);
-                    newQz = new Quiz_1.Quiz();
-                    newQz.title = req.body.title;
-                    newQz.makerId = req.body.makerId;
-                    newQz.description = req.body.description;
-                    newQz.temps = req.body.temps;
-                    newQz.note = req.body.note;
-                    return [4 /*yield*/, QuizRepo.save(newQz)];
+                    _a = req.body, title = _a.title, description = _a.description, makerId = _a.makerId, temps = _a.temps, note = _a.note, questions = _a.questions;
+                    newQuiz = new Quiz_1.Quiz();
+                    newQuiz.title = title;
+                    newQuiz.description = description;
+                    newQuiz.makerId = makerId;
+                    newQuiz.temps = temps;
+                    newQuiz.note = note;
+                    return [4 /*yield*/, QuizRepo.save(newQuiz)];
                 case 1:
-                    _a.sent();
-                    res.status(202).json({ message: "Quiz created successfuly" });
-                    return [3 /*break*/, 3];
+                    savedQuiz_1 = _b.sent();
+                    promises = questions.map(function (questionData) { return __awaiter(_this, void 0, void 0, function () {
+                        var qst, option1, option2, option3, option4, answeris, newQst;
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0:
+                                    qst = questionData.qst, option1 = questionData.option1, option2 = questionData.option2, option3 = questionData.option3, option4 = questionData.option4, answeris = questionData.answeris;
+                                    newQst = new Question_1.Question();
+                                    newQst.qst = qst;
+                                    newQst.option1 = option1;
+                                    newQst.option2 = option2;
+                                    newQst.option3 = option3;
+                                    newQst.option4 = option4;
+                                    newQst.answeris = answeris;
+                                    newQst.quiz = savedQuiz_1; // Associate the question with the quiz
+                                    return [4 /*yield*/, QstRepo_1.save(newQst)];
+                                case 1:
+                                    _a.sent();
+                                    return [2 /*return*/];
+                            }
+                        });
+                    }); });
+                    return [4 /*yield*/, Promise.all(promises)];
                 case 2:
-                    error_1 = _a.sent();
-                    console.error("Error creating User:", error_1);
+                    _b.sent();
+                    res
+                        .status(201)
+                        .json({ message: "Quiz and questions created successfully" });
+                    return [3 /*break*/, 4];
+                case 3:
+                    error_1 = _b.sent();
+                    console.error("Error creating quiz and questions:", error_1);
                     res.status(500).json({ error: "Internal server error" });
-                    return [3 /*break*/, 3];
-                case 3: return [2 /*return*/];
+                    return [3 /*break*/, 4];
+                case 4: return [2 /*return*/];
             }
         });
     }); });
@@ -148,7 +177,7 @@ module.exports = function (app, AppDataSource) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
                     quizRepo = AppDataSource.getRepository(Quiz_1.Quiz);
-                    return [4 /*yield*/, quizRepo.find()];
+                    return [4 /*yield*/, quizRepo.find({ relations: ["questions"] })];
                 case 1:
                     quizzes = _a.sent();
                     res.status(200).json(quizzes);
@@ -162,9 +191,34 @@ module.exports = function (app, AppDataSource) {
             }
         });
     }); });
+    app.get("/getQuiz/:id", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
+        var quizId, quizRepo, quiz, error_5;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    quizId = req.params.id;
+                    quizRepo = AppDataSource.getRepository(Quiz_1.Quiz);
+                    return [4 /*yield*/, quizRepo.findOne(quizId, { relations: ["questions"] })];
+                case 1:
+                    quiz = _a.sent();
+                    if (!quiz) {
+                        return [2 /*return*/, res.status(404).json({ error: "Quiz not found" })];
+                    }
+                    res.status(200).json(quiz);
+                    return [3 /*break*/, 3];
+                case 2:
+                    error_5 = _a.sent();
+                    console.error("Error getting quiz:", error_5);
+                    res.status(500).json({ error: "Internal server error" });
+                    return [3 /*break*/, 3];
+                case 3: return [2 /*return*/];
+            }
+        });
+    }); });
     //CRUD QUESTION
     app.post("/createqst", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var QstRepo, newQst, error_5;
+        var QstRepo, newQst, error_6;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -183,8 +237,8 @@ module.exports = function (app, AppDataSource) {
                     res.status(202).json({ message: "Qst created successfuly" });
                     return [3 /*break*/, 3];
                 case 2:
-                    error_5 = _a.sent();
-                    console.error("Error creating question:", error_5);
+                    error_6 = _a.sent();
+                    console.error("Error creating question:", error_6);
                     res.status(500).json({ error: "Internal server error" });
                     return [3 /*break*/, 3];
                 case 3: return [2 /*return*/];
@@ -192,7 +246,7 @@ module.exports = function (app, AppDataSource) {
         });
     }); });
     app.put("/updateQuestion/:id", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var qstId, qstRepo, qst, error_6;
+        var qstId, qstRepo, qst, error_7;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -216,8 +270,8 @@ module.exports = function (app, AppDataSource) {
                     res.status(200).json({ message: "Question updated successfully", qst: qst });
                     return [3 /*break*/, 4];
                 case 3:
-                    error_6 = _a.sent();
-                    console.error("Error updating Question:", error_6);
+                    error_7 = _a.sent();
+                    console.error("Error updating Question:", error_7);
                     res.status(500).json({ error: "Internal server error" });
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
@@ -225,7 +279,7 @@ module.exports = function (app, AppDataSource) {
         });
     }); });
     app["delete"]("/deleteQuestion/:id", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var qstId, qstRepo, qst, error_7;
+        var qstId, qstRepo, qst, error_8;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -246,8 +300,8 @@ module.exports = function (app, AppDataSource) {
                     res.status(200).json({ message: "Question deleted successfully", qst: qst });
                     return [3 /*break*/, 4];
                 case 3:
-                    error_7 = _a.sent();
-                    console.error("Error deleting Question:", error_7);
+                    error_8 = _a.sent();
+                    console.error("Error deleting Question:", error_8);
                     res.status(500).json({ error: "Internal server error" });
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
@@ -255,20 +309,45 @@ module.exports = function (app, AppDataSource) {
         });
     }); });
     app.get("/listQuestion", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var qstRepo, qsts, error_8;
+        var qstRepo, qsts, error_9;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
                     qstRepo = AppDataSource.getRepository(Question_1.Question);
-                    return [4 /*yield*/, qstRepo.find()];
+                    return [4 /*yield*/, qstRepo.find({ relations: ["quiz"] })];
                 case 1:
                     qsts = _a.sent();
                     res.status(200).json(qsts);
                     return [3 /*break*/, 3];
                 case 2:
-                    error_8 = _a.sent();
-                    console.error("Error listing questions:", error_8);
+                    error_9 = _a.sent();
+                    console.error("Error listing questions:", error_9);
+                    res.status(500).json({ error: "Internal server error" });
+                    return [3 /*break*/, 3];
+                case 3: return [2 /*return*/];
+            }
+        });
+    }); });
+    app.get("/listQuestion/:quizId", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
+        var quizId, qstRepo, qsts, error_10;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    quizId = req.params.quizId;
+                    qstRepo = AppDataSource.getRepository(Question_1.Question);
+                    return [4 /*yield*/, qstRepo.find({
+                            where: { quiz: { id: quizId } },
+                            relations: ["quiz"]
+                        })];
+                case 1:
+                    qsts = _a.sent();
+                    res.status(200).json(qsts);
+                    return [3 /*break*/, 3];
+                case 2:
+                    error_10 = _a.sent();
+                    console.error("Error listing questions:", error_10);
                     res.status(500).json({ error: "Internal server error" });
                     return [3 /*break*/, 3];
                 case 3: return [2 /*return*/];
@@ -277,7 +356,7 @@ module.exports = function (app, AppDataSource) {
     }); });
     // CRUD Note
     app.post("/createNote", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var _a, quizId, userId, NoteRepo, newNt, qzRepo, myquiz, UserRepo, myuser, error_9;
+        var _a, quizId, userId, NoteRepo, newNt, qzRepo, myquiz, UserRepo, myuser, error_11;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -309,11 +388,13 @@ module.exports = function (app, AppDataSource) {
                     return [4 /*yield*/, NoteRepo.save(newNt)];
                 case 3:
                     _b.sent();
+                    // Emit a 'noteCreated' event to notify connected clients
+                    io.emit("noteCreated", newNt);
                     res.status(202).json({ message: "Note created successfuly" });
                     return [3 /*break*/, 5];
                 case 4:
-                    error_9 = _b.sent();
-                    console.error("Error creating Note:", error_9);
+                    error_11 = _b.sent();
+                    console.error("Error creating Note:", error_11);
                     res.status(500).json({ error: "Internal server error" });
                     return [3 /*break*/, 5];
                 case 5: return [2 /*return*/];
@@ -321,7 +402,7 @@ module.exports = function (app, AppDataSource) {
         });
     }); });
     app.put("/updateNote/:id", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var noteId, NtRepo, mynote, error_10;
+        var noteId, NtRepo, mynote, error_12;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -342,8 +423,8 @@ module.exports = function (app, AppDataSource) {
                     res.status(200).json({ message: "Note updated successfully", mynote: mynote });
                     return [3 /*break*/, 4];
                 case 3:
-                    error_10 = _a.sent();
-                    console.error("Error updating Note:", error_10);
+                    error_12 = _a.sent();
+                    console.error("Error updating Note:", error_12);
                     res.status(500).json({ error: "Internal server error" });
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
@@ -351,7 +432,7 @@ module.exports = function (app, AppDataSource) {
         });
     }); });
     app["delete"]("/deleteNote/:id", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var NtId, NtRepo, mynote, error_11;
+        var NtId, NtRepo, mynote, error_13;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -372,8 +453,8 @@ module.exports = function (app, AppDataSource) {
                     res.status(200).json({ message: "Note deleted successfully", mynote: mynote });
                     return [3 /*break*/, 4];
                 case 3:
-                    error_11 = _a.sent();
-                    console.error("Error deleting Note:", error_11);
+                    error_13 = _a.sent();
+                    console.error("Error deleting Note:", error_13);
                     res.status(500).json({ error: "Internal server error" });
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
@@ -381,20 +462,22 @@ module.exports = function (app, AppDataSource) {
         });
     }); });
     app.get("/listNote", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var NtRepo, notes, error_12;
+        var NtRepo, notes, error_14;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
                     NtRepo = AppDataSource.getRepository(Note_1.Note);
-                    return [4 /*yield*/, NtRepo.find()];
+                    return [4 /*yield*/, NtRepo.find({ relations: ["quiz", "user"] })];
                 case 1:
                     notes = _a.sent();
+                    // Return the formatted notes
                     res.status(200).json(notes);
                     return [3 /*break*/, 3];
                 case 2:
-                    error_12 = _a.sent();
-                    console.error("Error listing notes:", error_12);
+                    error_14 = _a.sent();
+                    // Handle errors
+                    console.error("Error listing notes:", error_14);
                     res.status(500).json({ error: "Internal server error" });
                     return [3 /*break*/, 3];
                 case 3: return [2 /*return*/];
@@ -403,7 +486,7 @@ module.exports = function (app, AppDataSource) {
     }); });
     //Account:
     app.post("/login", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var _a, email, password, trimmedEmail, trimmedPassword, account, passwordMatch, response, error_13;
+        var _a, email, password, trimmedEmail, trimmedPassword, account, passwordMatch, response, error_15;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -435,18 +518,18 @@ module.exports = function (app, AppDataSource) {
                     res.status(200).json(response);
                     return [3 /*break*/, 4];
                 case 3:
-                    error_13 = _b.sent();
-                    console.error("Error during login:", error_13.message);
+                    error_15 = _b.sent();
+                    console.error("Error during login:", error_15.message);
                     res
                         .status(500)
-                        .json({ error: "Internal Server Error", details: error_13.message });
+                        .json({ error: "Internal Server Error", details: error_15.message });
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
             }
         });
     }); });
     app.post("/students", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var _a, email, password, firstName, lastName, trimmedPassword, hashedPassword, existingAccount, newAccount, accountRepository, newStudent, studentRepository, error_14;
+        var _a, email, password, firstName, lastName, trimmedPassword, hashedPassword, existingAccount, newAccount, accountRepository, newStudent, studentRepository, error_16;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -485,18 +568,18 @@ module.exports = function (app, AppDataSource) {
                     res.status(201).json(newStudent); // 201 indicates successful creation
                     return [3 /*break*/, 6];
                 case 5:
-                    error_14 = _b.sent();
-                    console.error("Error during registration:", error_14.message);
+                    error_16 = _b.sent();
+                    console.error("Error during registration:", error_16.message);
                     res
                         .status(500)
-                        .json({ error: "Internal Server Error", details: error_14.message });
+                        .json({ error: "Internal Server Error", details: error_16.message });
                     return [3 /*break*/, 6];
                 case 6: return [2 /*return*/];
             }
         });
     }); });
     app.put("/user/:id", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var userId, userRepository, existingUser, error_15;
+        var userId, userRepository, existingUser, error_17;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -523,18 +606,18 @@ module.exports = function (app, AppDataSource) {
                     res.json(existingUser);
                     return [3 /*break*/, 4];
                 case 3:
-                    error_15 = _a.sent();
-                    console.error("Error updating student:", error_15.message);
+                    error_17 = _a.sent();
+                    console.error("Error updating student:", error_17.message);
                     res
                         .status(500)
-                        .json({ error: "Internal Server Error", details: error_15.message });
+                        .json({ error: "Internal Server Error", details: error_17.message });
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
             }
         });
     }); });
     app.get("/users", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var professeurs, error_16;
+        var professeurs, error_18;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -547,8 +630,8 @@ module.exports = function (app, AppDataSource) {
                     res.status(200).json(professeurs);
                     return [3 /*break*/, 3];
                 case 2:
-                    error_16 = _a.sent();
-                    console.error("Error fetching users:", error_16);
+                    error_18 = _a.sent();
+                    console.error("Error fetching users:", error_18);
                     res.status(500).json({ error: "Internal server error" });
                     return [3 /*break*/, 3];
                 case 3: return [2 /*return*/];
@@ -556,7 +639,7 @@ module.exports = function (app, AppDataSource) {
         });
     }); });
     app.post("/professeur", function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-        var _a, nom, prenom, email, password, hashedPassword, existingAccount, newAccount, accountRepository, savedAccount, newProfesseur, professeurRepository, error_17;
+        var _a, nom, prenom, email, password, hashedPassword, existingAccount, newAccount, accountRepository, savedAccount, newProfesseur, professeurRepository, error_19;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -593,8 +676,8 @@ module.exports = function (app, AppDataSource) {
                     res.status(201).json({ message: "Professeur created successfully" });
                     return [3 /*break*/, 6];
                 case 5:
-                    error_17 = _b.sent();
-                    console.error("Error creating Professeur:", error_17);
+                    error_19 = _b.sent();
+                    console.error("Error creating Professeur:", error_19);
                     res.status(500).json({ error: "Internal server error" });
                     return [3 /*break*/, 6];
                 case 6: return [2 /*return*/];
