@@ -6,7 +6,7 @@ import {
   JoinTable,
 } from "typeorm";
 import { Question } from "./Question";
-import { User } from "./User";
+
 
 @Entity()
 export class Quiz {

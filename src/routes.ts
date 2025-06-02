@@ -6,8 +6,9 @@ import { Note } from "./entity/Note";
 import { Request, Response } from "express";
 import { In } from "typeorm";
 import { User } from "./entity/User";
+import { Enroll } from "./entity/Enroll";
 
-module.exports = function (app, AppDataSource, io) {
+module.exports = function (app, AppDataSource) {
   app.post("/createqst", async (req, res) => {
     try {
       const QstRepo = AppDataSource.getRepository(Question);
@@ -223,9 +224,7 @@ module.exports = function (app, AppDataSource, io) {
       }
       newNt.user = myuser;
       await NoteRepo.save(newNt);
-      // Emit a 'noteCreated' event to notify connected clients
-      io.emit("noteCreated", newNt);
-      res.status(202).json({ message: "Note created successfuly" });
+      res.status(202).json({ message: "Note created successfully" });
     } catch (error) {
       console.error("Error creating Note:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -459,6 +458,130 @@ module.exports = function (app, AppDataSource, io) {
       res.status(201).json({ message: "Professeur created successfully" });
     } catch (error) {
       console.error("Error creating Professeur:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Enroll CRUD Operations
+  app.post("/enroll", async (req: Request, res: Response) => {
+    try {
+      const { userId, quizId } = req.body;
+      const enrollRepo = AppDataSource.getRepository(Enroll);
+      const userRepo = AppDataSource.getRepository(User);
+      const quizRepo = AppDataSource.getRepository(Quiz);
+
+      // Check if user and quiz exist
+      const user = await userRepo.findOne({
+        where: { id: userId }
+      });
+      const quiz = await quizRepo.findOne({
+        where: { id: quizId }
+      });
+
+      if (!user || !quiz) {
+        return res.status(404).json({ error: "User or Quiz not found" });
+      }
+
+      // Check if enrollment already exists
+      const existingEnroll = await enrollRepo.findOne({
+        where: { user: { id: userId }, quiz: { id: quizId } }
+      });
+
+      if (existingEnroll) {
+        return res.status(400).json({ error: "User is already enrolled in this quiz" });
+      }
+
+      // Create new enrollment
+      const newEnroll = new Enroll();
+      newEnroll.user = user;
+      newEnroll.quiz = quiz;
+      newEnroll.isCompleted = false;
+      newEnroll.score = 0;
+      newEnroll.attempts = 0;
+
+      const savedEnroll = await enrollRepo.save(newEnroll);
+      res.status(201).json({ message: "Enrollment created successfully", enroll: savedEnroll });
+    } catch (error) {
+      console.error("Error creating enrollment:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/enrollments", async (req: Request, res: Response) => {
+    try {
+      const enrollRepo = AppDataSource.getRepository(Enroll);
+      const enrollments = await enrollRepo.find({
+        relations: ["user", "quiz"]
+      });
+      res.status(200).json(enrollments);
+    } catch (error) {
+      console.error("Error fetching enrollments:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/enrollments/:userId", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const enrollRepo = AppDataSource.getRepository(Enroll);
+      const enrollments = await enrollRepo.find({
+        where: { user: { id: userId } },
+        relations: ["quiz"]
+      });
+      res.status(200).json(enrollments);
+    } catch (error) {
+      console.error("Error fetching user enrollments:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/enrollments/:id", async (req: Request, res: Response) => {
+    try {
+      const enrollId = parseInt(req.params.id);
+      const enrollRepo = AppDataSource.getRepository(Enroll);
+      const enrollment = await enrollRepo.findOne({
+        where: { id: enrollId },
+        relations: ["user", "quiz"]
+      });
+
+      if (!enrollment) {
+        return res.status(404).json({ error: "Enrollment not found" });
+      }
+
+      // Update enrollment fields
+      if (req.body.score !== undefined) enrollment.score = req.body.score;
+      if (req.body.isCompleted !== undefined) {
+        enrollment.isCompleted = req.body.isCompleted;
+        if (req.body.isCompleted) {
+          enrollment.completedAt = new Date();
+        }
+      }
+      if (req.body.attempts !== undefined) enrollment.attempts = req.body.attempts;
+
+      const updatedEnroll = await enrollRepo.save(enrollment);
+      res.status(200).json({ message: "Enrollment updated successfully", enroll: updatedEnroll });
+    } catch (error) {
+      console.error("Error updating enrollment:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/enrollments/:id", async (req: Request, res: Response) => {
+    try {
+      const enrollId = parseInt(req.params.id);
+      const enrollRepo = AppDataSource.getRepository(Enroll);
+      const enrollment = await enrollRepo.findOne({
+        where: { id: enrollId }
+      });
+
+      if (!enrollment) {
+        return res.status(404).json({ error: "Enrollment not found" });
+      }
+
+      await enrollRepo.remove(enrollment);
+      res.status(200).json({ message: "Enrollment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting enrollment:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
